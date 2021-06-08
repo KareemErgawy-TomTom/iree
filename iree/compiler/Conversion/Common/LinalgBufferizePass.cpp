@@ -623,6 +623,20 @@ static Value allocateBufferForResult(OpBuilder &b, Operation *op,
   } else {
     return nullptr;
   }
+
+  // If its a static allocation hoist it all the begining of the function.
+  if (dynamicDims.empty()) {
+    auto parentOp = op->getParentOp();
+    while (parentOp) {
+      if (isa<FuncOp>(parentOp)) break;
+      parentOp = parentOp->getParentOp();
+    }
+    auto funcOp = dyn_cast<FuncOp>(parentOp);
+    OpBuilder::InsertionGuard g(b);
+    b.setInsertionPointToStart(&funcOp.front());
+    return allocationFn(b, loc, resultType.getShape(),
+                        resultType.getElementType(), dynamicDims);
+  }
   return allocationFn(b, loc, resultType.getShape(),
                       resultType.getElementType(), dynamicDims);
 }
